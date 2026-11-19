@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KKM Terminal · Архитектура v1.0</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333;
+    --line:#243044; --text:#e6edf7; --muted:#8b9bb4;
+    --accent:#4dd4ff; --accent2:#7c5cff; --ok:#2ecc71; --warn:#f5a623; --err:#ff5c7a;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;font-size:16px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* header */
+  header{position:sticky;top:0;z-index:50;background:rgba(11,15,23,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .hwrap{max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .logo{font-weight:700;font-size:18px;letter-spacing:.5px}
+  .logo span{color:var(--accent)}
+  .badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+  nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
+  nav a{color:var(--muted)}
+  nav a:hover{color:var(--text)}
+  @media(max-width:820px){nav{margin-left:0;width:100%}}
+
+  /* layout */
+  main{max-width:1200px;margin:0 auto;padding:40px 24px 100px}
+  section{margin-bottom:64px}
+  h1{font-size:clamp(28px,4vw,44px);line-height:1.2;margin-bottom:14px;font-weight:800}
+  h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:clamp(22px,3vw,30px);margin-bottom:20px;font-weight:700;border-left:4px solid var(--accent);padding-left:14px}
+  h3{font-size:18px;margin:24px 0 12px;font-weight:700;color:var(--accent)}
+  h4{font-size:15px;margin:18px 0 8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+  p{margin-bottom:14px}
+  .lead{font-size:18px;color:var(--muted);max-width:820px;margin-bottom:24px}
+
+  /* cards */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin-top:0}
+  .card p:last-child{margin-bottom:0}
+  .card.accent{border-color:rgba(77,212,255,.35);background:linear-gradient(180deg,rgba(77,212,255,.05),transparent)}
+  .card .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;background:var(--panel2);color:var(--muted);margin-bottom:10px;border:1px solid var(--line)}
+
+  /* facts */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:20px 0}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .fact .k{font-size:12px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px}
+  .fact .v{font-size:20px;font-weight:700;margin-top:4px}
+
+  /* code */
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;margin:14px 0;position:relative;font-size:13.5px;line-height:1.55}
+  code{font-family:var(--mono);font-size:.92em}
+  p code,li code,td code{background:var(--panel2);padding:2px 6px;border-radius:5px;border:1px solid var(--line);font-size:.86em;color:var(--accent)}
+  pre code{color:#c9d6ea;background:none;padding:0;border:none}
+  .copy{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:11px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .2s}
+  pre:hover .copy{opacity:1}
+  .copy:hover{color:var(--text);border-color:var(--accent)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  tr:hover td{background:rgba(255,255,255,.02)}
+
+  /* diagram */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.5;color:#a9bcd8;white-space:pre}
+
+  /* lists */
+  ul.clean{list-style:none;padding:0}
+  ul.clean li{padding:8px 0 8px 26px;position:relative;border-bottom:1px solid var(--line)}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li::before{content:'▸';position:absolute;left:6px;color:var(--accent)}
+  ul.check li::before{content:'✓';color:var(--ok);font-weight:700}
+
+  /* pills */
+  .pill{display:inline-block;font-family:var(--mono);font-size:12px;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0}
+  .pill.a{background:rgba(77,212,255,.12);color:var(--accent);border:1px solid rgba(77,212,255,.3)}
+  .pill.b{background:rgba(124,92,255,.12);color:#a48bff;border:1px solid rgba(124,92,255,.3)}
+  .pill.ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+  .pill.warn{background:rgba(245,166,35,.12);color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+  .pill.err{background:rgba(255,92,122,.12);color:var(--err);border:1px solid rgba(255,92,122,.3)}
+
+  /* footer */
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:40px 24px;border-top:1px solid var(--line);font-family:var(--mono)}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#33415a}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="logo">KKM<span>·</span>Terminal</div>
+    <span class="badge">ARCHITECTURE · v1.0 · FIXED</span>
+    <nav>
+      <a href="#overview">Обзор</a>
+      <a href="#arch">Архитектура</a>
+      <a href="#modes">Режимы</a>
+      <a href="#dist">Дистрибуция</a>
+      <a href="#db">БД</a>
+      <a href="#ci">CI</a>
+      <a href="#checklist">Чек-лист</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<section id="overview">
+  <h1>Мобильный терминал сбора данных <br><span class="grad">+ фискальный регистратор</span></h1>
+  <p class="lead">Кроссплатформенное приложение на Supabase с реалтайм-синхронизацией остатков, CV-распознаванием товаров и цифровой «долговой тетрадью». Архитектура зафиксирована.</p>
+
+  <div class="facts">
+    <div class="fact"><div class="k">Backend</div><div class="v">Supabase</div></div>
+    <div class="fact"><div class="k">Realtime</div><div class="v">WebSocket</div></div>
+    <div class="fact"><div class="k">Distribution</div><div class="v">Telegram (closed)</div></div>
+    <div class="fact"><div class="k">Integrity</div><div class="v">SHA-256</div></div>
+    <div class="fact"><div class="k">Idempotency</div><div class="v">receipt_uuid</div></div>
+    <div class="fact"><div class="k">Modes</div><div class="v">A / B</div></div>
+  </div>
+
+  <div class="grid g3" style="margin-top:24px">
+    <div class="card accent">
+      <div class="tag">MODULE 01</div>
+      <h3>Динамический каталог</h3>
+      <p>Плиточная модель <code>products ⇄ boutiques</code> через JSON-конфиг, без изменения схемы данных.</p>
+    </div>
+    <div class="card accent">
+      <div class="tag">MODULE 02</div>
+      <h3>Компьютерное зрение</h3>
+      <p>On-device детекция → классификация SKU → быстрое подтверждение количества.</p>
+    </div>
+    <div class="card accent">
+      <div class="tag">MODULE 03</div>
+      <h3>Взаиморасчеты</h3>
+      <p>Статусы <code>cash / debt / podryal</code>, частичное погашение, append-only аудит.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="arch">
+  <h2>Общая архитектура</h2>
+  <div class="diagram">┌────────────────────── ОБЩЕЕ ЯДРО (Supabase + клиент) ──────────────────────┐
+│  каталог-плитки · CV-распознавание · остатки (Realtime) ·                 │
+│  взаиморасчеты (cash/debt/podryal, частичное погашение, ретро) ·          │
+│  офлайн-очередь · SHA-256-апдейты через закрытый канал                    │
+└──────────────────────────────┬─────────────────────────────────────────────┘
+                               │  FiscalAdapter (интерфейс)
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+   ┌─────────────────────┐          ┌──────────────────────────┐
+   │  РЕЖИМ A            │          │  РЕЖИМ B                 │
+   │  Автономная ККМ     │          │  Сканер + терминал       │
+   │  (смартфон = ККМ)   │          │  → внешний ККМ           │
+   └─────────────────────┘          └──────────────────────────┘</div>
+
+  <h3>Разделение ответственности</h3>
+  <table>
+    <thead><tr><th>Слой</th><th>Где живёт</th><th>Кто управляет</th></tr></thead>
+    <tbody>
+      <tr><td>Клиентский код</td><td>Закрытый репозиторий (GitHub private)</td><td>Команда</td></tr>
+      <tr><td>Серверная логика</td><td>Supabase Edge Functions (Deno/TS)</td><td>CI + админы</td></tr>
+      <tr><td>Данные</td><td>Postgres + RLS</td><td>Админы / service_role</td></tr>
+      <tr><td>Файлы (APK, медиа)</td><td>Supabase Storage (private)</td><td>CI / signed URL</td></tr>
+      <tr><td>Секреты</td><td>CI-секреты / Supabase Vault</td><td>Ограниченный круг</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Инварианты (не менять без новой ревизии)</h3>
+  <ul class="clean">
+    <li>Смартфон — <strong>ввод и расчет</strong>, не фискализация.</li>
+    <li>Внешний ККМ — <strong>фискализация и печать</strong>.</li>
+    <li><code>receipt_uuid</code> — ключ идемпотентности на всех уровнях.</li>
+    <li>Общие таблицы операций/остатков/долгов для обоих режимов.</li>
+    <li>SHA-256-сверка обновлений — <strong>обязательна</strong>.</li>
+    <li>Закрытый Telegram-канал — транспорт; Supabase — авторитет.</li>
+    <li>Append-only для финансов; корректировки — компенсирующими записями.</li>
+  </ul>
+</section>
+
+<!-- ============ MODES ============ -->
+<section id="modes">
+  <h2>Два режима работы</h2>
+
+  <div class="grid g2">
+    <div class="card">
+      <span class="pill a">РЕЖИМ A</span>
+      <h3 style="margin-top:10px">Автономная ККМ</h3>
+      <p>Смартфон выполняет расчет и фискализацию через встроенный/облачный модуль.</p>
+      <ul class="clean">
+        <li>SDK провайдера (облачная ККМ / программный ФН)</li>
+        <li>Зависимость от сети (если нет локального ФН)</li>
+        <li>Одна точка отказа — само устройство</li>
+        <li>Чек/QR — с экрана или по ссылке</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="pill b">РЕЖИМ B</span>
+      <h3 style="margin-top:10px">Мобильный терминал → внешний ККМ</h3>
+      <p>Смартфон — только ввод и распознавание. Фискализация — на внешнем ККМ.</p>
+      <ul class="clean">
+        <li>BLE / USB / LAN, протоколы ESC/POS, АТОЛ, Штрих-М</li>
+        <li>Внешний ККМ офлайн-способен (ФН внутри)</li>
+        <li>Один терминал может обслуживать несколько ККМ</li>
+        <li>Выгрузка процесса — идемпотентно по <code>receipt_uuid</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Абстракция FiscalAdapter</h3>
+<pre><button class="copy">copy</button><code>interface FiscalAdapter {
+  readonly mode: 'embedded' | 'external';
+  registerSale(req: SaleRequest): Promise&lt;FiscalResult&gt;;
+  registerRefund(req: RefundRequest): Promise&lt;FiscalResult&gt;;
+  zReport(): Promise&lt;ZReportResult&gt;;
+  healthCheck(): Promise&lt;AdapterHealth&gt;;
+}
+
+type SaleRequest = {
+  receipt_uuid: string;          // идемпотентность
+  items: { sku: string; qty: number; price: number; sum: number }[];
+  payments: { type: 'cash' | 'debt' | 'podryal'; amount: number; counterparty_id?: string }[];
+  total: number;
+  device_id: string;
+  kkm_id?: string;               // для external
+};
+
+type FiscalResult = {
+  status: 'ok' | 'failed' | 'pending';
+  fd?: string; fpd?: string; qr?: string;
+  provider: string;              // имя SDK/ККМ
+  raw?: unknown;
+  error?: string;
+};</code></pre>
+
+  <table>
+    <thead><tr><th>Сценарий</th><th>Режим A</th><th>Режим B</th></tr></thead>
+    <tbody>
+      <tr><td>Нет сети, есть ФН на месте</td><td>Ограниченно / очередь</td><td><span class="pill ok">Полностью работает</span></td></tr>
+      <tr><td>Нет сети, только облачная ККМ</td><td>Очередь, фискализация при связи</td><td>Не применимо</td></tr>
+      <tr><td>Нет связи с внешним ККМ</td><td>—</td><td>Ошибка + ретрай</td></tr>
+      <tr><td>Сбой после фискализации</td><td>Ретрай по UUID</td><td>Ретрай по UUID</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ DISTRIBUTION ============ -->
+<section id="dist">
+  <h2>Дистрибуция и целостность</h2>
+
+  <div class="diagram">git tag → CI (private runner):
+  1. build + sign APK (keystore из секретов)
+  2. upload APK → Supabase Storage (private bucket)
+  3. insert row → releases + manifest (источник истины)
+  4. publish → закрытый Telegram-канал (sendDocument)
+  5. (опц.) уведомление админ-чата
+
+Клиент:
+  1. GET /latest-release → manifest {version_code, sha256, apk_url}
+  2. сравнить version_code → если новее
+  3. скачать APK (из канала или по signed URL)
+  4. посчитать SHA-256 → сверить с manifest.sha256
+  5. установить только при совпадении</div>
+
+  <div class="grid g3" style="margin-top:20px">
+    <div class="card">
+      <h4>Транспорт</h4>
+      <p>Закрытый Telegram-канал. Участники добавляются вручную. Бот — админ канала, публикует сборки.</p>
+    </div>
+    <div class="card">
+      <h4>Источник истины</h4>
+      <p>Supabase: таблица <code>releases</code> + приватный bucket. Манифест авторитетен, сообщение в канале — лишь подсказка.</p>
+    </div>
+    <div class="card">
+      <h4>Контроль</h4>
+      <p>SHA-256 из манифеста. При несовпадении — файл удаляется, установка блокируется, событие логируется в <code>client_pings</code>.</p>
+    </div>
+  </div>
+
+  <h3>Клиентская сверка (обязательна)</h3>
+<pre><button class="copy">copy</button><code>Future&lt;void&gt; downloadAndInstall(ReleaseInfo m) async {
+  final file = await _download(m.apkUrl);
+  final actual = sha256.convert(await file.readAsBytes()).toString();
+  if (actual != m.sha256) {
+    await file.delete();
+    throw IntegrityException('SHA-256 mismatch');
+  }
+  await installApk(file);  // FileProvider + ACTION_VIEW
+}</code></pre>
+
+  <h3>Риски и меры</h3>
+  <table>
+    <thead><tr><th>Риск</th><th>Мера</th></tr></thead>
+    <tbody>
+      <tr><td>Утечка инвайт-ссылки</td><td>Одноразовые/лимитированные ссылки, ротация</td></tr>
+      <tr><td>Подмена APK в канале</td><td>SHA-256 из Supabase-манифеста — единственный критерий</td></tr>
+      <tr><td>Компрометация бот-токена</td><td>Ротация, аудит <code>tg_message_id</code></td></tr>
+      <tr><td>Утечка <code>service_role</code></td><td>Только CI/Edge Function, ротация</td></tr>
+      <tr><td>Потеря keystore</td><td>Бэкап в защищённом хранилище</td></tr>
+      <tr><td>APK &gt; 50 МБ</td><td><code>sendMessage</code> + signed URL вместо <code>sendDocument</code></td></tr>
+      <tr><td>Битый релиз в канале</td><td><code>revoked=true</code> → клиент не предлагает</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ DB ============ -->
+<section id="db">
+  <h2>Схема базы данных</h2>
+  <p class="lead">6 миграций. RLS на всё, запись — только через <code>security definer</code> RPC или <code>service_role</code>.</p>
+
+  <h3>0001 · Ядро — audit_log</h3>
+<pre><button class="copy">copy</button><code>create extension if not exists "pgcrypto";
+
+create table public.audit_log (
+  id          bigserial primary key,
+  entity      text not null,
+  entity_id   uuid,
+  action      text not null,          -- insert | compensate | status_change
+  actor       uuid,
+  payload     jsonb not null default '{}',
+  created_at  timestamptz not null default now()
+);
+create index audit_entity_idx on public.audit_log (entity, entity_id);
+alter table public.audit_log enable row level security;</code></pre>
+
+  <h3>0002 · Каталог и остатки</h3>
+<pre><button class="copy">copy</button><code>create table public.products (
+  id uuid primary key default gen_random_uuid(),
+  sku text not null unique,
+  name text not null,
+  price numeric(12,2) not null check (price >= 0),
+  boutique_id uuid,
+  cv_embedding vector(512),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table public.stock_levels (
+  product_id uuid not null references public.products(id) on delete cascade,
+  location_id uuid not null,
+  qty int not null default 0 check (qty >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (product_id, location_id)
+);
+alter publication supabase_realtime add table public.stock_levels;
+
+create or replace function public.decrement_stock(
+  p_product uuid, p_location uuid, p_qty int
+) returns void language plpgsql security definer as $$
+begin
+  update public.stock_levels
+     set qty = qty - p_qty, updated_at = now()
+   where product_id = p_product and location_id = p_location and qty >= p_qty;
+  if not found then
+    raise exception 'insufficient_stock' using errcode = 'P0001';
+  end if;
+end $$;</code></pre>
+
+  <h3>0003 · Контрагенты и долги</h3>
+<pre><button class="copy">copy</button><code>create table public.counterparties (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  status text not null check (status in ('cash','debt','podryal')),
+  phone text,
+  created_at timestamptz not null default now()
+);
+
+create table public.debts (
+  id uuid primary key default gen_random_uuid(),
+  counterparty_id uuid not null references public.counterparties(id),
+  amount numeric(12,2) not null check (amount > 0),
+  effective_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+create table public.payments (
+  id uuid primary key default gen_random_uuid(),
+  debt_id uuid not null references public.debts(id),
+  amount numeric(12,2) not null check (amount > 0),
+  method text not null check (method in ('cash','transfer','offset')),
+  effective_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+create or replace view public.debt_balances as
+select d.id as debt_id, d.counterparty_id, d.amount,
+       coalesce(sum(p.amount),0) as paid,
+       d.amount - coalesce(sum(p.amount),0) as balance
+from public.debts d
+left join public.payments p on p.debt_id = d.id
+group by d.id, d.counterparty_id, d.amount;</code></pre>
+
+  <h3>0004 · Фискализация и транзакции</h3>
+<pre><button class="copy">copy</button><code>create table public.transactions (
+  id uuid primary key,                 -- receipt_uuid
+  device_id text not null,
+  location_id uuid,
+  counterparty_id uuid,
+  items jsonb not null,
+  total numeric(12,2) not null,
+  payment_type text not null check (payment_type in ('cash','debt','podryal')),
+  status text not null default 'pending'
+    check (status in ('pending','fiscal_pending','fiscalized','failed','compensated')),
+  created_at timestamptz not null default now()
+);
+
+create table public.fiscal_receipts (
+  id uuid primary key default gen_random_uuid(),
+  receipt_uuid uuid not null unique references public.transactions(id),
+  provider text not null,
+  kkm_id text,
+  fd text, fpd text, qr text,
+  sum numeric(12,2) not null,
+  raw jsonb,
+  status text not null default 'ok' check (status in ('ok','pending','failed')),
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.register_sale(
+  p_receipt uuid, p_device text, p_items jsonb, p_total numeric,
+  p_payment_type text, p_provider text, p_kkm_id text,
+  p_fd text, p_fpd text, p_qr text, p_raw jsonb
+) returns void language plpgsql security definer as $$
+begin
+  if exists(select 1 from public.transactions where id = p_receipt) then return; end if;
+
+  insert into public.transactions(id, device_id, items, total, payment_type, status)
+  values (p_receipt, p_device, p_items, p_total, p_payment_type, 'fiscalized');
+
+  insert into public.fiscal_receipts(receipt_uuid, provider, kkm_id, fd, fpd, qr, sum, raw, status)
+  values (p_receipt, p_provider, p_kkm_id, p_fd, p_fpd, p_qr, p_total, p_raw, 'ok');
+
+  perform public.decrement_stock(
+    (it->>'product_id')::uuid,
+    (it->>'location_id')::uuid,
+    (it->>'qty')::int
+  ) from jsonb_arra<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KKM Terminal · Архитектура v1.0</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333;
+    --line:#243044; --text:#e6edf7; --muted:#8b9bb4;
+    --accent:#4dd4ff; --accent2:#7c5cff; --ok:#2ecc71; --warn:#f5a623; --err:#ff5c7a;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;font-size:16px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* header */
+  header{position:sticky;top:0;z-index:50;background:rgba(11,15,23,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .hwrap{max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .logo{font-weight:700;font-size:18px;letter-spacing:.5px}
+  .logo span{color:var(--accent)}
+  .badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+  nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
+  nav a{color:var(--muted)}
+  nav a:hover{color:var(--text)}
+  @media(max-width:820px){nav{margin-left:0;width:100%}}
+
+  /* layout */
+  main{max-width:1200px;margin:0 auto;padding:40px 24px 100px}
+  section{margin-bottom:64px}
+  h1{font-size:clamp(28px,4vw,44px);line-height:1.2;margin-bottom:14px;font-weight:800}
+  h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:clamp(22px,3vw,30px);margin-bottom:20px;font-weight:700;border-left:4px solid var(--accent);padding-left:14px}
+  h3{font-size:18px;margin:24px 0 12px;font-weight:700;color:var(--accent)}
+  h4{font-size:15px;margin:18px 0 8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+  p{margin-bottom:14px}
+  .lead{font-size:18px;color:var(--muted);max-width:820px;margin-bottom:24px}
+
+  /* cards */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin-top:0}
+  .card p:last-child{margin-bottom:0}
+  .card.accent{border-color:rgba(77,212,255,.35);background:linear-gradient(180deg,rgba(77,212,255,.05),transparent)}
+  .card .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;background:var(--panel2);color:var(--muted);margin-bottom:10px;border:1px solid var(--line)}
+
+  /* facts */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:20px 0}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .fact .k{font-size:12px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px}
+  .fact .v{font-size:20px;font-weight:700;margin-top:4px}
+
+  /* code */
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;margin:14px 0;position:relative;font-size:13.5px;line-height:1.55}
+  code{font-family:var(--mono);font-size:.92em}
+  p code,li code,td code{background:var(--panel2);padding:2px 6px;border-radius:5px;border:1px solid var(--line);font-size:.86em;color:var(--accent)}
+  pre code{color:#c9d6ea;background:none;padding:0;border:none}
+  .copy{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:11px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .2s}
+  pre:hover .copy{opacity:1}
+  .copy:hover{color:var(--text);border-color:var(--accent)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  tr:hover td{background:rgba(255,255,255,.02)}
+
+  /* diagram */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.5;color:#a9bcd8;white-space:pre}
+
+  /* lists */
+  ul.clean{list-style:none;padding:0}
+  ul.clean li{padding:8px 0 8px 26px;position:relative;border-bottom:1px solid var(--line)}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li::before{content:'▸';position:absolute;left:6px;color:var(--accent)}
+  ul.check li::before{content:'✓';color:var(--ok);font-weight:700}
+
+  /* pills */
+  .pill{display:inline-block;font-family:var(--mono);font-size:12px;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0}
+  .pill.a{background:rgba(77,212,255,.12);color:var(--accent);border:1px solid rgba(77,212,255,.3)}
+  .pill.b{background:rgba(124,92,255,.12);color:#a48bff;border:1px solid rgba(124,92,255,.3)}
+  .pill.ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+  .pill.warn{background:rgba(245,166,35,.12);color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+  .pill.err{background:rgba(255,92,122,.12);color:var(--err);border:1px solid rgba(255,92,122,.3)}
+
+  /* footer */
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:40px 24px;border-top:1px solid var(--line);font-family:var(--mono)}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#33415a}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="logo">KKM<span>·</span>Terminal</div>
+    <span class="badge">ARCHITECTURE · v1.0 · FIXED</span>
+    <nav>
+      <a href="#overview">Обзор</a>
+      <a href="#arch">Архитектура</a>
+      <a href="#modes">Режимы</a>
+      <a href="#dist">Дистрибуция</a>
+      <a href="#db">БД</a>
+      <a href="#ci">CI</a>
+      <a href="#checklist">Чек-лист</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<section id="overview">
+  <h1>Мобильный терминал сбора данных <br><span class="grad">+ фискальный регистратор</span></h1>
+  <p class="lead">Кроссплатформенное приложение на Supabase с реалтайм-синхронизацией остатков, CV-распознаванием товаров и цифровой «долговой тетрадью». Архитектура зафиксирована.</p>
+
+  <div class="facts">
+    <div class="fact"><div class="k">Backend</div><div class="v">Supabase</div></div>
+    <div class="fact"><div class="k">Realtime</div><div class="v">WebSocket</div></div>
+    <div class="fact"><div class="k">Distribution</div><div class="v">Telegram (closed)</div></div>
+    <div class="fact"><div class="k">Integrity</div><div class="v">SHA-256</div></div>
+    <div class="fact"><div class="k">Idempotency</div><div class="v">receipt_uuid</div></div>
+    <div class="fact"><div class="k">Modes</div><div class="v">A / B</div></div>
+  </div>
+
+  <div class="grid g3" style="margin-top:24px">
+    <div class="card accent">
+      <div class="tag">MODULE 01</div>
+      <h3>Динамический каталог</h3>
+      <p>Плиточная модель <code>products ⇄ boutiques</code> через JSON-конфиг, без изменения схемы данных.</p>
+    </div>
+    <div class="card accent">
+      <div class="tag">MODULE 02</div>
+      <h3>Компьютерное зрение</h3>
+      <p>On-device детекция → классификация SKU → быстрое подтверждение количества.</p>
+    </div>
+    <div class="card accent">
+      <div class="tag">MODULE 03</div>
+      <h3>Взаиморасчеты</h3>
+      <p>Статусы <code>cash / debt / podryal</code>, частичное погашение, append-only аудит.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="arch">
+  <h2>Общая архитектура</h2>
+  <div class="diagram">┌────────────────────── ОБЩЕЕ ЯДРО (Supabase + клиент) ──────────────────────┐
+│  каталог-плитки · CV-распознавание · остатки (Realtime) ·                 │
+│  взаиморасчеты (cash/debt/podryal, частичное погашение, ретро) ·          │
+│  офлайн-очередь · SHA-256-апдейты через закрытый канал                    │
+└──────────────────────────────┬─────────────────────────────────────────────┘
+                               │  FiscalAdapter (интерфейс)
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+   ┌─────────────────────┐          ┌──────────────────────────┐
+   │  РЕЖИМ A            │          │  РЕЖИМ B                 │
+   │  Автономная ККМ     │          │  Сканер + терминал       │
+   │  (смартфон = ККМ)   │          │  → внешний ККМ           │
+   └─────────────────────┘          └──────────────────────────┘</div>
+
+  <h3>Разделение ответственности</h3>
+  <table>
+    <thead><tr><th>Слой</th><th>Где живёт</th><th>Кто управляет</th></tr></thead>
+    <tbody>
+      <tr><td>Клиентский код</td><td>Закрытый репозиторий (GitHub private)</td><td>Команда</td></tr>
+      <tr><td>Серверная логика</td><td>Supabase Edge Functions (Deno/TS)</td><td>CI + админы</td></tr>
+      <tr><td>Данные</td><td>Postgres + RLS</td><td>Админы / service_role</td></tr>
+      <tr><td>Файлы (APK, медиа)</td><td>Supabase Storage (private)</td><td>CI / signed URL</td></tr>
+      <tr><td>Секреты</td><td>CI-секреты / Supabase Vault</td><td>Ограниченный круг</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Инварианты (не менять без новой ревизии)</h3>
+  <ul class="clean">
+    <li>Смартфон — <strong>ввод и расчет</strong>, не фискализация.</li>
+    <li>Внешний ККМ — <strong>фискализация и печать</strong>.</li>
+    <li><code>receipt_uuid</code> — ключ идемпотентности на всех уровнях.</li>
+    <li>Общие таблицы операций/остатков/долгов для обоих режимов.</li>
+    <li>SHA-256-сверка обновлений — <strong>обязательна</strong>.</li>
+    <li>Закрытый Telegram-канал — транспорт; Supabase — авторитет.</li>
+    <li>Append-only для финансов; корректировки — компенсирующими записями.</li>
+  </ul>
+</section>
+
+<!-- ============ MODES ============ -->
+<section id="modes">
+  <h2>Два режима работы</h2>
+
+  <div class="grid g2">
+    <div class="card">
+      <span class="pill a">РЕЖИМ A</span>
+      <h3 style="margin-top:10px">Автономная ККМ</h3>
+      <p>Смартфон выполняет расчет и фискализацию через встроенный/облачный модуль.</p>
+      <ul class="clean">
+        <li>SDK провайдера (облачная ККМ / программный ФН)</li>
+        <li>Зависимость от сети (если нет локального ФН)</li>
+        <li>Одна точка отказа — само устройство</li>
+        <li>Чек/QR — с экрана или по ссылке</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="pill b">РЕЖИМ B</span>
+      <h3 style="margin-top:10px">Мобильный терминал → внешний ККМ</h3>
+      <p>Смартфон — только ввод и распознавание. Фискализация — на внешнем ККМ.</p>
+      <ul class="clean">
+        <li>BLE / USB / LAN, протоколы ESC/POS, АТОЛ, Штрих-М</li>
+        <li>Внешний ККМ офлайн-способен (ФН внутри)</li>
+        <li>Один терминал может обслуживать несколько ККМ</li>
+        <li>Выгрузка процесса — идемпотентно по <code>receipt_uuid</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Абстракция FiscalAdapter</h3>
+<pre><button class="copy">copy</button><code>interface FiscalAdapter {
+  readonly mode: 'embedded' | 'external';
+  registerSale(req: SaleRequest): Promise&lt;FiscalResult&gt;;
+  registerRefund(req: RefundRequest): Promise&lt;FiscalResult&gt;;
+  zReport(): Promise&lt;ZReportResult&gt;;
+  healthCheck(): Promise&lt;AdapterHealth&gt;;
+}
+
+type SaleRequest = {
+  receipt_uuid: string;          // идемпотентность
+  items: { sku: string; qty: number; price: number; sum: number }[];
+  payments: { type: 'cash' | 'debt' | 'podryal'; amount: number; counterparty_id?: string }[];
+  total: number;
+  device_id: string;
+  kkm_id?: string;               // для external
+};
+
+type FiscalResult = {
+  status: 'ok' | 'failed' | 'pending';
+  fd?: string; fpd?: string; qr?: string;
+  provider: string;              // имя SDK/ККМ
+  raw?: unknown;
+  error?: string;
+};</code></pre>
+
+  <table>
+    <thead><tr><th>Сценарий</th><th>Режим A</th><th>Режим B</th></tr></thead>
+    <tbody>
+      <tr><td>Нет сети, есть ФН на месте</td><td>Ограниченно / очередь</td><td><span class="pill ok">Полностью работает</span></td></tr>
+      <tr><td>Нет сети, только облачная ККМ</td><td>Очередь, фискализация при связи</td><td>Не применимо</td></tr>
+      <tr><td>Нет связи с внешним ККМ</td><td>—</td><td>Ошибка + ретрай</td></tr>
+      <tr><td>Сбой после фискализации</td><td>Ретрай по UUID</td><td>Ретрай по UUID</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ DISTRIBUTION ============ -->
+<section id="dist">
+  <h2>Дистрибуция и целостность</h2>
+
+  <div class="diagram">git tag → CI (private runner):
+  1. build + sign APK (keystore из секретов)
+  2. upload APK → Supabase Storage (private bucket)
+  3. insert row → releases + manifest (источник истины)
+  4. publish → закрытый Telegram-канал (sendDocument)
+  5. (опц.) уведомление админ-чата
+
+Клиент:
+  1. GET /latest-release → manifest {version_code, sha256, apk_url}
+  2. сравнить version_code → если новее
+  3. скачать APK (из канала или по signed URL)
+  4. посчитать SHA-256 → сверить с manifest.sha256
+  5. установить только при совпадении</div>
+
+  <div class="grid g3" style="margin-top:20px">
+    <div class="card">
+      <h4>Транспорт</h4>
+      <p>Закрытый Telegram-канал. Участники добавляются вручную. Бот — админ канала, публикует сборки.</p>
+    </div>
+    <div class="card">
+      <h4>Источник истины</h4>
+      <p>Supabase: таблица <code>releases</code> + приватный bucket. Манифест авторитетен, сообщение в канале — лишь подсказка.</p>
+    </div>
+    <div class="card">
+      <h4>Контроль</h4>
+      <p>SHA-256 из манифеста. При несовпадении — файл удаляется, установка блокируется, событие логируется в <code>client_pings</code>.</p>
+    </div>
+  </div>
+
+  <h3>Клиентская сверка (обязательна)</h3>
+<pre><button class="copy">copy</button><code>Future&lt;void&gt; downloadAndInstall(ReleaseInfo m) async {
+  final file = await _download(m.apkUrl);
+  final actual = sha256.convert(await file.readAsBytes()).toString();
+  if (actual != m.sha256) {
+    await file.delete();
+    throw IntegrityException('SHA-256 mismatch');
+  }
+  await installApk(file);  // FileProvider + ACTION_VIEW
+}</code></pre>
+
+  <h3>Риски и меры</h3>
+  <table>
+    <thead><tr><th>Риск</th><th>Мера</th></tr></thead>
+    <tbody>
+      <tr><td>Утечка инвайт-ссылки</td><td>Одноразовые/лимитированные ссылки, ротация</td></tr>
+      <tr><td>Подмена APK в канале</td><td>SHA-256 из Supabase-манифеста — единственный критерий</td></tr>
+      <tr><td>Компрометация бот-токена</td><td>Ротация, аудит <code>tg_message_id</code></td></tr>
+      <tr><td>Утечка <code>service_role</code></td><td>Только CI/Edge Function, ротация</td></tr>
+      <tr><td>Потеря keystore</td><td>Бэкап в защищённом хранилище</td></tr>
+      <tr><td>APK &gt; 50 МБ</td><td><code>sendMessage</code> + signed URL вместо <code>sendDocument</code></td></tr>
+      <tr><td>Битый релиз в канале</td><td><code>revoked=true</code> → клиент не предлагает</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ DB ============ -->
+<section id="db">
+  <h2>Схема базы данных</h2>
+  <p class="lead">6 миграций. RLS на всё, запись — только через <code>security definer</code> RPC или <code>service_role</code>.</p>
+
+  <h3>0001 · Ядро — audit_log</h3>
+<pre><button class="copy">copy</button><code>create extension if not exists "pgcrypto";
+
+create table public.audit_log (
+  id          bigserial primary key,
+  entity      text not null,
+  entity_id   uuid,
+  action      text not null,          -- insert | compensate | status_change
+  actor       uuid,
+  payload     jsonb not null default '{}',
+  created_at  timestamptz not null default now()
+);
+create index audit_entity_idx on public.audit_log (entity, entity_id);
+alter table public.audit_log enable row level security;</code></pre>
+
+  <h3>0002 · Каталог и остатки</h3>
+<pre><button class="copy">copy</button><code>create table public.products (
+  id uuid primary key default gen_random_uuid(),
+  sku text not null unique,
+  name text not null,
+  price numeric(12,2) not null check (price >= 0),
+  boutique_id uuid,
+  cv_embedding vector(512),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table public.stock_levels (
+  product_id uuid not null references public.products(id) on delete cascade,
+  location_id uuid not null,
+  qty int not null default 0 check (qty >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (product_id, location_id)
+);
+alter publication supabase_realtime add table public.stock_levels;
+
+create or replace function public.decrement_stock(
+  p_product uuid, p_location uuid, p_qty int
+) returns void language plpgsql security definer as $$
+begin
+  update public.stock_levels
+     set qty = qty - p_qty, updated_at = now()
+   where product_id = p_product and location_id = p_location and qty >= p_qty;
+  if not found then
+    raise exception 'insufficient_stock' using errcode = 'P0001';
+  end if;
+end $$;</code></pre>
+
+  <h3>0003 · Контрагенты и долги</h3>
+<pre><button class="copy">copy</button><code>create table public.counterparties (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  status text not null check (status in ('cash','debt','podryal')),
+  phone text,
+  created_at timestamptz not null default now()
+);
+
+create table public.debts (
+  id uuid primary key default gen_random_uuid(),
+  counterparty_id uuid not null references public.counterparties(id),
+  amount numeric(12,2) not null check (amount > 0),
+  effective_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+create table public.payments (
+  id uuid primary key default gen_random_uuid(),
+  debt_id uuid not null references public.debts(id),
+  amount numeric(12,2) not null check (amount > 0),
+  method text not null check (method in ('cash','transfer','offset')),
+  effective_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+create or replace view public.debt_balances as
+select d.id as debt_id, d.counterparty_id, d.amount,
+       coalesce(sum(p.amount),0) as paid,
+       d.amount - coalesce(sum(p.amount),0) as balance
+from public.debts d
+left join public.payments p on p.debt_id = d.id
+group by d.id, d.counterparty_id, d.amount;</code></pre>
+
+  <h3>0004 · Фискализация и транзакции</h3>
+<pre><button class="copy">copy</button><code>create table public.transactions (
+  id uuid primary key,                 -- receipt_uuid
+  device_id text not null,
+  location_id uuid,
+  counterparty_id uuid,
+  items jsonb not null,
+  total numeric(12,2) not null,
+  payment_type text not null check (payment_type in ('cash','debt','podryal')),
+  status text not null default 'pending'
+    check (status in ('pending','fiscal_pending','fiscalized','failed','compensated')),
+  created_at timestamptz not null default now()
+);
+
+create table public.fiscal_receipts (
+  id uuid primary key default gen_random_uuid(),
+  receipt_uuid uuid not null unique references public.transactions(id),
+  provider text not null,
+  kkm_id text,
+  fd text, fpd text, qr text,
+  sum numeric(12,2) not null,
+  raw jsonb,
+  status text not null default 'ok' check (status in ('ok','pending','failed')),
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.register_sale(
+  p_receipt uuid, p_device text, p_items jsonb, p_total numeric,
+  p_payment_type text, p_provider text, p_kkm_id text,
+  p_fd text, p_fpd text, p_qr text, p_raw jsonb
+) returns void language plpgsql security definer as $$
+begin
+  if exists(select 1 from public.transactions where id = p_receipt) then return; end if;
+
+  insert into public.transactions(id, device_id, items, total, payment_type, status)
+  values (p_receipt, p_device, p_items, p_total, p_payment_type, 'fiscalized');
+
+  insert into public.fiscal_receipts(receipt_uuid, provider, kkm_id, fd, fpd, qr, sum, raw, status)
+  values (p_receipt, p_provider, p_kkm_id, p_fd, p_fpd, p_qr, p_total, p_raw, 'ok');
+
+  perform public.decrement_stock(
+    (it->>'product_id')::uuid,
+    (it->>'location_id')::uuid,
+    (it->>'qty')::int
+  ) from jsonb_array_elements(p_items) it;
+end $$;</code></pre>
+
+  <h3>0005 · Релизы</h3>
+<pre><button class="copy">copy</button><code>create table public.releases (
+  id                  uuid primary key default gen_random_uuid(),
+  platform            text not null default 'android'
+                        check (platform in ('android','ios','web')),
+  channel             text not null default 'stable'
+                        check (channel in ('stable','beta')),
+  version_name        text not null,
+  version_code        int  not null check (version_code > 0),
+  min_supported_code  int  not null default 0,
+  apk_path            text not null,
+  sha256              text not null check (sha256 ~ '^[a-f0-9]{64}$'),
+  changelog           text,
+  rollout_percent     int  not null default 100 check (rollout_percent between 0 and 100),
+  revoked             boolean not null default false,
+  tg_message_id       bigint,
+  published_at        timestamptz not null default now(),
+  unique (platform, channel, version_code)
+);
+
+alter table public.releases enable row level security;
+create policy "releases_read_public" on public.releases
+  for select to anon, authenticated
+  using (published_at <= now() and revoked = false);
+
+insert into storage.buckets (id, name, public)
+values ('releases','releases', false)
+on conflict (id) do nothing;</code></pre>
+
+  <h3>0006 · Client pings</h3>
+<pre><button class="copy">copy</button><code>create table public.client_pings (
+  id bigserial primary key,
+  install_id uuid not null,
+  version_code int not null,
+  sha256_verified boolean not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.client_pings enable row level security;
+create policy "cp_insert_anon" on public.client_pings
+  for insert to anon with check (true);</code></pre>
+</section>
+
+<!-- ============ CI ============ -->
+<section id="ci">
+  <h2>CI/CD и Edge Function</h2>
+
+  <h3>Edge Function · latest-release</h3>
+<pre><button class="copy">copy</button><code>import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const admin = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  { auth: { persistSession: false } },
+);
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+};
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { "Content-Type": "application/json", ...CORS },
+  });
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+
+  const url = new URL(req.url);
+  const platform = url.searchParams.get("platform") ?? "android";
+  const channel  = url.searchParams.get("channel") ?? "stable";
+
+  const { data: rel, error } = await admin
+    .from("releases")
+    .select("version_name, version_code, min_supported_code, apk_path, sha256, changelog, rollout_percent, published_at")
+    .eq("platform", platform).eq("channel", channel).eq("revoked", false)
+    .lte("published_at", new Date().toISOString())
+    .order("version_code", { ascending: false }).limit(1).maybeSingle();
+
+  if (error) return json({ error: "db_error" }, 500);
+  if (!rel)   return json({ error: "no_release" }, 404);
+
+  const { data: signed, error: sErr } = await admin.storage
+    .from("releases").createSignedUrl(rel.apk_path, 60 * 60);
+  if (sErr || !signed?.signedUrl) return json({ error: "sign_error" }, 500);
+
+  return new Response(JSON.stringify({
+    platform, channel,
+    version_name: rel.version_name,
+    version_code: rel.version_code,
+    min_supported_code: rel.min_supported_code,
+    sha256: rel.sha256,
+    changelog: rel.changelog,
+    rollout_percent: rel.rollout_percent,
+    published_at: rel.published_at,
+    apk_url: signed.signedUrl,
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60", ...CORS },
+  });
+});</code></pre>
+
+  <h3>.github/workflows/release.yml</h3>
+<pre><button class="copy">copy</button><code>name: release-android
+on:
+  push: { tags: ['v*.*.*'] }
+permissions: { contents: read }
+
+jobs:
+  release:
+    runs-on: [self-hosted, linux, android]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+
+      - name: Restore keystore
+        env: { KS_B64: '${{ secrets.ANDROID_KEYSTORE_B64 }}' }
+        run: echo "$KS_B64" | base64 -d > android/app/release.keystore
+
+      - name: Build
+        env:
+          SUPA_URL:  '${{ secrets.SUPABASE_URL }}'
+          SUPA_ANON: '${{ secrets.SUPABASE_ANON_KEY }}'
+        run: |
+          flutter build apk --release \
+            --build-name="${GITHUB_REF_NAME#v}" \
+            --build-number="$(date +%s)" \
+            --dart-define=SUPABASE_URL="$SUPA_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPA_ANON"
+
+      - name: Hash + verify
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          echo "SHA256=$(sha256sum $APK | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "APK=$APK" >> $GITHUB_ENV
+          $ANDROID_HOME/build-tools/*/apksigner verify --print-certs $APK
+
+      - name: Publish to closed channel
+        env:
+          TG:   '${{ secrets.TELEGRAM_BOT_TOKEN }}'
+          CHAT: '${{ secrets.TELEGRAM_CHANNEL_ID }}'
+        run: |
+          CAP=$(printf "🚀 *Версия %s*\n\nSHA-256: \`%s\`" "${GITHUB_REF_NAME#v}" "$SHA256")
+          curl -sS -X POST "https://api.telegram.org/bot$TG/sendDocument" \
+            -F chat_id="$CHAT" -F parse_mode=Markdown \
+            -F caption="$CAP" -F document=@"$APK"</code></pre>
+
+  <h3>Секреты GitHub (Environment: production)</h3>
+  <table>
+    <thead><tr><th>Secret</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr><td><code>ANDROID_KEYSTORE_B64</code></td><td>base64 от .jks</td></tr>
+      <tr><td><code>KEYSTORE_PASSWORD</code> / <code>KEY_ALIAS</code> / <code>KEY_PASSWORD</code></td><td>подпись APK</td></tr>
+      <tr><td><code>SUPABASE_URL</code> / <code>SUPABASE_ANON_KEY</code></td><td>вкомпилированы в клиент</td></tr>
+      <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>CI (Storage + releases)</td></tr>
+      <tr><td><code>SUPABASE_ACCESS_TOKEN</code></td><td>supabase CLI</td></tr>
+      <tr><td><code>SUPABASE_PROJECT_REF</code></td><td>проект</td></tr>
+      <tr><td><code>TELEGRAM_BOT_TOKEN</code> / <code>TELEGRAM_CHANNEL_ID</code></td><td>публикация</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ CHECKLIST ============ -->
+<section id="checklist">
+  <h2>Чек-лист готовности</h2>
+  <div class="card">
+    <ul class="clean check">
+      <li>Репозиторий и .gitignore (keystore не утечёт)</li>
+      <li>6 миграций (ядро, каталог/остатки, долги, фискализация, релизы, пинги)</li>
+      <li>RLS на всё, запись — только через security definer RPC</li>
+      <li>Идемпотентность по <code>receipt_uuid</code> (<code>register_sale</code>)</li>
+      <li>Realtime на <code>stock_levels</code></li>
+      <li>Edge Function <code>latest-release</code> + signed URL</li>
+      <li>CI: сборка → подпись → Storage → <code>releases</code> → канал</li>
+      <li>Клиент: проверка версии → скачивание → SHA-256 сверка → установка</li>
+      <li>FileProvider + REQUEST_INSTALL_PACKAGES</li>
+      <li>Отзыв релиза (<code>revoke_release</code>)</li>
+      <li>Аудит append-only</li>
+    </ul>
+  </div>
+
+  <h3>Быстрый старт</h3>
+<pre><button class="copy">copy</button><code>git init
+git add .
+git commit -m "feat: kkm-terminal v1.0"
+git remote add origin git@github.com:&lt;org&gt;/kkm-terminal.git
+git branch -M main
+git push -u origin main
+
+supabase link --project-ref &lt;REF&gt;
+supabase db push
+supabase functions deploy latest-release
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... --project-ref &lt;REF&gt;
+
+git tag -a v1.0.0 -m "Initial release"
+git push --tags</code></pre>
+</section>
+
+</main>
+
+<footer>
+  KKM·Terminal · Architecture v1.0 · FIXED · Supabase + закрытый Telegram-канал + SHA-256
+</footer>
+
+<script>
+  document.querySelectorAll('pre').forEach(pre => {
+    const btn = pre.querySelector('.copy');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const code = pre.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const t = btn.textContent;
+        btn.textContent = '✓ copied';
+        setTimeout(() => btn.textContent = t, 1200);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>￼Entery_elements(p_items) it;
+end $$;</code></pre>
+
+  <h3>0005 · Релизы</h3>
+<pre><button class="copy">copy</button><code>create table public.releases (
+  id                  uuid primary key default gen_random_uuid(),
+  platform            text not null default 'android'
+                        check (platform in ('android','ios','web')),
+  channel             text not null default 'stable'
+                        check (channel in ('stable','beta')),
+  version_name        text not null,
+ion_code        int  not null check (version_code > 0),
+  min_supported_code  int  not null default 0,
+  apk_path            text not null,
+  sha256              text not null check (sha256 ~ '^[a-f0-9]{64}$'),
+  changelog           text,
+  rollout_percent     int  not null default 100 check (rollout_percent between 0 and 100),
+  revoked             boolean not null default false,
+  tg_message_id       bigint,
+  published_at        timestamptz not null default now(),
+  unique (platform, channel, version_code)
+);
+
+alter table public.releases enable row level security;
+create policy "releases_read_public" on public.releases
+  for select to anon, authenticated
+  using (published_at <= now() and revoked = false);
+
+insert into storage.buckets (id, name, public)
+values ('releases','releases', false)
+on conflict (id) do nothing;</code></pre>
+
+  <h3>0006 · Client pings</h3>
+<pre><button class="copy">copy</button><code>create table public.client_pings (
+  id bigserial primary key,
+  install_id uuid not null,
+  version_code int not null,
+  sha256_verified boolean not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.client_pings enable row level security;
+create policy "cp_insert_anon" on public.client_pings
+  for insert to anon with check (true);</code></pre>
+</section>
+
+<!-- ============ CI ============ -->
+<section id="ci">
+  <h2>CI/CD и Edge Function</h2>
+
+  <h3>Edge Function · latest-release</h3>
+<pre><button class="copy">copy</button><code>import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const admin = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  { auth: { persistSession: false } },
+);
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+};
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { "Content-Type": "application/json", ...CORS },
+  });
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+
+  const url = new URL(req.url);
+  const platform = url.searchParams.get("platform") ?? "android";
+  const channel  = url.searchParams.get("channel") ?? "stable";
+
+  const { data: rel, error } = await admin
+    .from("releases")
+    .select("version_name, version_code, min_supported_code, apk_path, sha256, changelog, rollout_percent, published_at")
+    .eq("platform", platform).eq("channel", channel).eq("revoked", false)
+    .lte("published_at", new Date().toISOString())
+    .order("version_code", { ascending: false }).limit(1).maybeSingle();
+
+  if (error) return json({ error: "db_error" }, 500);
+  if (!rel)   return json({ error: "no_release" }, 404);
+
+  const { data: signed, error: sErr } = await admin.storage
+    .from("releases").createSignedUrl(rel.apk_path, 60 * 60);
+  if (sErr || !signed?.signedUrl) return json({ error: "sign_error" }, 500);
+
+  return new Response(JSON.stringify({
+    platform, channel,
+    version_name: rel.version_name,
+    version_code: rel.version_code,
+    min_supported_code: rel.min_supported_code,
+    sha256: rel.sha256,
+    changelog: rel.changelog,
+    rollout_percent: rel.rollout_percent,
+    published_at: rel.published_at,
+    apk_url: signed.signedUrl,
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60", ...CORS },
+  });
+});</code></pre>
+
+  <h3>.github/workflows/release.yml</h3>
+<pre><button class="copy">copy</button><code>name: release-android
+on:
+  push: { tags: ['v*.*.*'] }
+permissions: { contents: read }
+
+jobs:
+  release:
+    runs-on: [self-hosted, linux, android]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
